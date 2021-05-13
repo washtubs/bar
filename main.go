@@ -351,7 +351,7 @@ func main() {
 		Output(func(temp unit.Temperature) bar.Output {
 			out := outputs.Pango(
 				pango.Icon("mdi-fan").Alpha(0.6), spacer,
-				pango.Textf("%2d℃", int(temp.Celsius())),
+				pango.Textf("%2d℉", int(temp.Fahrenheit())),
 			)
 			threshold(out,
 				temp.Celsius() > 90,
