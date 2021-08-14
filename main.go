@@ -393,6 +393,18 @@ func main() {
 
 	mediaSummary, mediaDetail := split.New(media.Auto().Output(mediaFormatFunc), 1)
 
+	maxWidth := 3840
+	minWidths := make(map[string]int)
+	minWidths["activetask"] = 800
+	minWidths["upcoming"] = 400
+	minWidths["rhs"] = 1000
+	total := 0
+	for w := range minWidths {
+		total += minWidths[w]
+	}
+
+	minWidths["time"] = maxWidth - total
+
 	activeTaskModule := &PollingModule{
 		"5s",
 		func(s bar.Sink) {
@@ -400,9 +412,11 @@ func main() {
 				pango.Text("[act]").Alpha(0.6).ExtraCondensed(),
 				spacer,
 				pango.Textf(activetask.GetTaskMessage()),
-			)
-			activeTaskSegment.Align(bar.AlignEnd)
-			s.Output(activeTaskSegment)
+			).MinWidth(minWidths["activetask"])
+			activeTaskSegment.Align(bar.AlignStart)
+			//activeTaskSegment.Padding(100)
+			group := outputs.Group(activeTaskSegment)
+			s.Output(group)
 		},
 	}
 
@@ -418,14 +432,20 @@ func main() {
 			if len(list) > 0 {
 				message = list[len(list)-1].HumanizeDuration()
 			}
-			activeTaskSegment := outputs.Pango(
+			upcomingSegment := outputs.Pango(
 				pango.Text("[up]").Alpha(0.6).ExtraCondensed(),
 				spacer,
 				pango.Textf(message),
 			)
+			if list[len(list)-1].When.Before(time.Now().Add(time.Minute * 1)) {
+				upcomingSegment = upcomingSegment.Color(colors.Scheme("bad"))
+			} else if list[len(list)-1].When.Before(time.Now().Add(time.Minute * 5)) {
+				upcomingSegment = upcomingSegment.Color(colors.Scheme("degraded"))
+			}
+			upcomingSegment = upcomingSegment.MinWidth(minWidths["upcoming"])
 
-			activeTaskSegment.Align(bar.AlignEnd)
-			s.Output(activeTaskSegment)
+			//upcomingSegment.Align(bar.AlignEnd)
+			s.Output(upcomingSegment)
 		},
 	}
 
@@ -471,10 +491,9 @@ func main() {
 		Detail(makeTzClock("Seattle", "America/Los_Angeles")).
 		Detail(makeTzClock("New York", "America/New_York")).
 		Detail(makeTzClock("UTC", "Etc/UTC")).
-		Detail(makeTzClock("Seoul", "Asia/Seoul")).
-		Add(localdate)
+		Detail(makeTzClock("Seoul", "Asia/Seoul"))
 
 	var mm bar.Module
 	mm, mainModalController = mainModal.Build()
-	panic(barista.Run(activeTaskModule, upcomingModule, todayRemainingModule, mm))
+	panic(barista.Run(localdate, activeTaskModule, upcomingModule, todayRemainingModule, mm))
 }
